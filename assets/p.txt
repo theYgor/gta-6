@@ -1,0 +1,1 @@
+ <p class="rodape-direitos">&copy; 2026 Rockstar Games, Inc. GTA VI, Grand Theft Auto e marcas registradas são propriedade da Take-Two Interactive Software.</p>
