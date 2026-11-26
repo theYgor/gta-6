@@ -4,8 +4,6 @@ const video = document.querySelector(".capa-video");
 const capa = document.querySelector(".capa");
 const capaPainel = document.querySelector(".capa-painel");
 const capaConteudo = document.querySelector(".capa-conteudo");
-const capaBarra = document.querySelector(".capa-barra");
-const capaSeta = document.querySelector(".capa-seta");
 
 if (menu) {
     window.addEventListener("scroll", function () {
@@ -14,7 +12,7 @@ if (menu) {
         } else {
             menu.classList.remove("menu-rolado");
         }
-    });
+    }, { passive: true });
 }
 
 if (blocos.length) {
@@ -22,9 +20,10 @@ if (blocos.length) {
         entradas.forEach(function (entrada) {
             if (entrada.isIntersecting) {
                 entrada.target.classList.add("visivel");
+                observador.unobserve(entrada.target);
             }
         });
-    });
+    }, { threshold: 0.15 });
 
     blocos.forEach(function (bloco) {
         observador.observe(bloco);
@@ -33,32 +32,81 @@ if (blocos.length) {
 
 if (window.gsap && window.ScrollTrigger && video && capa && capaPainel && capaConteudo) {
     gsap.registerPlugin(ScrollTrigger);
+    ScrollTrigger.config({ ignoreMobileResize: true });
 
-function iniciarScrub() {
-  const tl = gsap.timeline({
-    scrollTrigger: {
-      trigger: '.capa',
-      start: 'top top',
-      end: '+=300%',       
-      scrub: true,
-      pin: '.capa-painel',
-      anticipatePin: 1,
-      invalidateOnRefresh: true
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "true");
+    video.pause();
+
+    let iniciado = false;
+
+    const iniciarVideoScroll = function () {
+        if (iniciado) return;
+
+        if (!video.duration || !Number.isFinite(video.duration)) {
+            return;
+        }
+
+        iniciado = true;
+
+        const tl = gsap.timeline({
+            defaults: { ease: "none" },
+            scrollTrigger: {
+                trigger: capa,
+                start: "top top",
+                end: "+=2200",
+                scrub: 0.5,
+                pin: true,
+                anticipatePin: 1,
+                invalidateOnRefresh: true,
+            }
+        });
+
+        tl.to(".capa-conteudo, .capa-barra", {
+            opacity: 0,
+            y: -40,
+            scale: 0.6,
+            duration: 0.15,
+        }, 0);
+
+        tl.to(".capa-seta", { opacity: 0, duration: 0.15 }, 0);
+
+        tl.to(video, { opacity: 1, duration: 0.15 }, 0);
+
+        tl.to(video, {
+            currentTime: Math.max(video.duration - 0.05, 0),
+            duration: 1,
+        }, 0);
+
+        ScrollTrigger.refresh();
+    };
+
+    video.addEventListener("error", function () {
+        console.error("Erro ao carregar o vídeo:", video.currentSrc || video.src);
+    });
+
+    const prepararVideo = function () {
+        iniciarVideoScroll();
+
+        const tentativa = video.play();
+
+        if (tentativa && typeof tentativa.then === "function") {
+            tentativa
+                .then(function () { video.pause(); })
+                .catch(function () {});
+        } else {
+            video.pause();
+        }
+    };
+
+    if (video.readyState >= 1) {
+        prepararVideo();
+    } else {
+        video.addEventListener("loadedmetadata", prepararVideo, { once: true });
     }
-  });
 
-  tl.fromTo(video, { currentTime: 0 }, { currentTime: video.duration, ease: 'none' });
-}
-
-function preparar() {
-  video.play().then(() => video.pause()).catch(() => {});
-  iniciarScrub();
-  ScrollTrigger.refresh();
-}
-
-if (video.readyState >= 1) {
-  preparar();
-} else {
-  video.addEventListener('loadedmetadata', preparar, { once: true });
-}
+    window.addEventListener("load", function () {
+        ScrollTrigger.refresh();
+    });
 }
